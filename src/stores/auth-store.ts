@@ -30,7 +30,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // Listen for auth changes (including OAuth redirects)
+      // Check if we're in an OAuth callback (hash has access_token)
+      const isOAuthCallback =
+        typeof window !== "undefined" &&
+        (window.location.hash.includes("access_token") ||
+         window.location.search.includes("code="));
+
+      // If OAuth callback, wait for auth state change to process the token
+      if (isOAuthCallback) {
+        await new Promise<void>((resolve) => {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+              if (event === "SIGNED_IN" && session?.user) {
+                set({ session, user: session.user });
+                await get().fetchProfile(session.user.id);
+              }
+              set({ isInitialized: true });
+              resolve();
+            }
+          );
+          // Timeout after 5s in case something goes wrong
+          setTimeout(() => {
+            set({ isInitialized: true });
+            resolve();
+          }, 5000);
+        });
+        return;
+      }
+
+      // Normal flow: check existing session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        set({ session, user: session.user });
+        await get().fetchProfile(session.user.id);
+      }
+
+      // Listen for future auth changes
       supabase.auth.onAuthStateChange(async (_event, session) => {
         set({ session, user: session?.user ?? null });
         if (session?.user) {
@@ -38,22 +73,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } else {
           set({ profile: null });
         }
-        // Mark initialized after first auth event
-        if (!get().isInitialized) {
-          set({ isInitialized: true });
-        }
       });
-
-      // Also check existing session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        set({ session, user: session.user });
-        await get().fetchProfile(session.user.id);
-      }
     } catch {
       set({ error: "Failed to initialize auth" });
     } finally {
-      // Ensure we always mark as initialized
       if (!get().isInitialized) {
         set({ isInitialized: true });
       }
