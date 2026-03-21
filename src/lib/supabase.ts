@@ -7,14 +7,11 @@ import type { Database } from "@/types/database";
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-const isWeb = Platform.OS === "web";
-
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: isWeb,
-    flowType: "implicit",
+    detectSessionInUrl: false,
   },
 });

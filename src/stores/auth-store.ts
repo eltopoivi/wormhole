@@ -20,6 +20,39 @@ interface AuthState {
   clearError: () => void;
 }
 
+async function handleOAuthCallback(): Promise<Session | null> {
+  if (typeof window === "undefined") return null;
+
+  const url = window.location;
+
+  // Case 1: Implicit flow — tokens in hash fragment
+  if (url.hash) {
+    const params = new URLSearchParams(url.hash.substring(1));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      window.history.replaceState(null, "", url.pathname);
+      if (!error && data.session) return data.session;
+    }
+  }
+
+  // Case 2: PKCE flow — code in query params
+  const params = new URLSearchParams(url.search);
+  const code = params.get("code");
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    window.history.replaceState(null, "", url.pathname);
+    if (!error && data.session) return data.session;
+  }
+
+  return null;
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
@@ -30,49 +63,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // Step 1: If URL has OAuth tokens, extract and set session manually
-      if (typeof window !== "undefined" && window.location.hash) {
-        const hash = window.location.hash.substring(1);
-        const params = new URLSearchParams(hash);
-        const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
-
-        if (accessToken && refreshToken) {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (!error && data.session) {
-            set({ session: data.session, user: data.session.user });
-            await get().fetchProfile(data.session.user.id);
-            // Clean the URL hash
-            window.history.replaceState(null, "", window.location.pathname);
+      // 1. Check for OAuth callback tokens in URL
+      const oauthSession = await handleOAuthCallback();
+      if (oauthSession) {
+        set({ session: oauthSession, user: oauthSession.user });
+        await get().fetchProfile(oauthSession.user.id);
+        supabase.auth.onAuthStateChange(async (_event, session) => {
+          set({ session, user: session?.user ?? null });
+          if (session?.user) {
+            await get().fetchProfile(session.user.id);
+          } else {
+            set({ profile: null });
           }
-
-          // Set up listener for future changes
-          supabase.auth.onAuthStateChange(async (_event, session) => {
-            set({ session, user: session?.user ?? null });
-            if (session?.user) {
-              await get().fetchProfile(session.user.id);
-            } else {
-              set({ profile: null });
-            }
-          });
-
-          set({ isInitialized: true });
-          return;
-        }
+        });
+        set({ isInitialized: true });
+        return;
       }
 
-      // Step 2: Normal flow — check stored session
+      // 2. Normal flow — check stored session
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         set({ session, user: session.user });
         await get().fetchProfile(session.user.id);
       }
 
-      // Listen for future auth changes
       supabase.auth.onAuthStateChange(async (_event, session) => {
         set({ session, user: session?.user ?? null });
         if (session?.user) {
@@ -81,7 +95,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ profile: null });
         }
       });
-    } catch {
+    } catch (err) {
+      console.error("[auth] initialize error:", err);
       set({ error: "Failed to initialize auth" });
     } finally {
       set({ isInitialized: true });
@@ -133,6 +148,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         provider: "discord",
         options: {
           redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+          skipBrowserRedirect: false,
         },
       });
       if (error) throw error;
