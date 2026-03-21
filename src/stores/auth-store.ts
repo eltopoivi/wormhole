@@ -20,39 +20,6 @@ interface AuthState {
   clearError: () => void;
 }
 
-async function handleOAuthCallback(): Promise<Session | null> {
-  if (typeof window === "undefined") return null;
-
-  const url = window.location;
-
-  // Case 1: Implicit flow — tokens in hash fragment
-  if (url.hash) {
-    const params = new URLSearchParams(url.hash.substring(1));
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-
-    if (accessToken && refreshToken) {
-      const { data, error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      window.history.replaceState(null, "", url.pathname);
-      if (!error && data.session) return data.session;
-    }
-  }
-
-  // Case 2: PKCE flow — code in query params
-  const params = new URLSearchParams(url.search);
-  const code = params.get("code");
-  if (code) {
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    window.history.replaceState(null, "", url.pathname);
-    if (!error && data.session) return data.session;
-  }
-
-  return null;
-}
-
 export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   user: null,
@@ -63,24 +30,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // 1. Check for OAuth callback tokens in URL
-      const oauthSession = await handleOAuthCallback();
-      if (oauthSession) {
-        set({ session: oauthSession, user: oauthSession.user });
-        await get().fetchProfile(oauthSession.user.id);
-        supabase.auth.onAuthStateChange(async (_event, session) => {
-          set({ session, user: session?.user ?? null });
-          if (session?.user) {
-            await get().fetchProfile(session.user.id);
-          } else {
-            set({ profile: null });
-          }
-        });
-        set({ isInitialized: true });
-        return;
-      }
-
-      // 2. Normal flow — check stored session
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         set({ session, user: session.user });
@@ -144,12 +93,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithDiscord: async () => {
     set({ isLoading: true, error: null });
     try {
+      const redirectTo = typeof window !== "undefined"
+        ? `${window.location.origin}/callback`
+        : undefined;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "discord",
-        options: {
-          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-          skipBrowserRedirect: false,
-        },
+        options: { redirectTo },
       });
       if (error) throw error;
     } catch (err: unknown) {
