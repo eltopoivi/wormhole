@@ -8,6 +8,7 @@ import {
   Pressable,
 } from "react-native";
 import { Link, router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -17,7 +18,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const { signIn, isLoading, error, clearError } = useAuthStore();
+  const { signIn, signInWithDiscord, isLoading, error, clearError } = useAuthStore();
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) return;
@@ -65,6 +66,36 @@ export default function LoginScreen() {
                 </View>
               </Pressable>
             )}
+
+            {/* Discord OAuth Button */}
+            <Pressable
+              onPress={signInWithDiscord}
+              disabled={isLoading}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: pressed ? "#4752c4" : "#5865f2",
+                borderRadius: 8,
+                paddingVertical: 13,
+                marginBottom: 20,
+                opacity: isLoading ? 0.6 : 1,
+                cursor: isLoading ? "auto" : "pointer",
+                gap: 10,
+              } as any)}
+            >
+              <Ionicons name="logo-discord" size={22} color="#fff" />
+              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+                Continue with Discord
+              </Text>
+            </Pressable>
+
+            {/* Divider */}
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
+              <Text style={{ color: COLORS.textMuted, fontSize: 12, paddingHorizontal: 12 }}>OR</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: COLORS.border }} />
+            </View>
 
             <View style={{ gap: 20 }}>
               <Input

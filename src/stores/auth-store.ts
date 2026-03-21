@@ -14,6 +14,7 @@ interface AuthState {
   initialize: () => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithDiscord: () => Promise<void>;
   signOut: () => Promise<void>;
   fetchProfile: (userId: string) => Promise<void>;
   clearError: () => void;
@@ -84,6 +85,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const message = err instanceof Error ? err.message : "Sign in failed";
       set({ error: message });
       throw err;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signInWithDiscord: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "discord",
+        options: {
+          redirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
+        },
+      });
+      if (error) throw error;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Discord sign in failed";
+      set({ error: message });
     } finally {
       set({ isLoading: false });
     }
