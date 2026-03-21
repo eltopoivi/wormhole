@@ -30,35 +30,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // Check if we're in an OAuth callback (hash has access_token)
-      const isOAuthCallback =
-        typeof window !== "undefined" &&
-        (window.location.hash.includes("access_token") ||
-         window.location.search.includes("code="));
+      // Step 1: If URL has OAuth tokens, extract and set session manually
+      if (typeof window !== "undefined" && window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
 
-      // If OAuth callback, wait for auth state change to process the token
-      if (isOAuthCallback) {
-        await new Promise<void>((resolve) => {
-          const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-              if (event === "SIGNED_IN" && session?.user) {
-                set({ session, user: session.user });
-                await get().fetchProfile(session.user.id);
-              }
-              set({ isInitialized: true });
-              resolve();
+        if (accessToken && refreshToken) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (!error && data.session) {
+            set({ session: data.session, user: data.session.user });
+            await get().fetchProfile(data.session.user.id);
+            // Clean the URL hash
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+
+          // Set up listener for future changes
+          supabase.auth.onAuthStateChange(async (_event, session) => {
+            set({ session, user: session?.user ?? null });
+            if (session?.user) {
+              await get().fetchProfile(session.user.id);
+            } else {
+              set({ profile: null });
             }
-          );
-          // Timeout after 5s in case something goes wrong
-          setTimeout(() => {
-            set({ isInitialized: true });
-            resolve();
-          }, 5000);
-        });
-        return;
+          });
+
+          set({ isInitialized: true });
+          return;
+        }
       }
 
-      // Normal flow: check existing session
+      // Step 2: Normal flow — check stored session
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         set({ session, user: session.user });
@@ -77,9 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       set({ error: "Failed to initialize auth" });
     } finally {
-      if (!get().isInitialized) {
-        set({ isInitialized: true });
-      }
+      set({ isInitialized: true });
     }
   },
 
@@ -168,7 +173,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
     }
   },
-
 
   clearError: () => set({ error: null }),
 }));
