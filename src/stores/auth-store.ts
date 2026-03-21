@@ -30,24 +30,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
+      // Set up auth state listener FIRST
+      // This catches OAuth redirects, session refreshes, sign-in/out
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (_event, session) => {
+          set({ session, user: session?.user ?? null });
+          if (session?.user) {
+            await get().fetchProfile(session.user.id);
+          } else {
+            set({ profile: null });
+          }
+          // If this is the first event and we haven't initialized yet, do it
+          if (!get().isInitialized) {
+            set({ isInitialized: true });
+          }
+        }
+      );
+
+      // Also actively check for session (in case listener hasn't fired yet)
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         set({ session, user: session.user });
         await get().fetchProfile(session.user.id);
       }
-
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        set({ session, user: session?.user ?? null });
-        if (session?.user) {
-          await get().fetchProfile(session.user.id);
-        } else {
-          set({ profile: null });
-        }
-      });
     } catch (err) {
       console.error("[auth] initialize error:", err);
-      set({ error: "Failed to initialize auth" });
     } finally {
+      // Always mark as initialized
       set({ isInitialized: true });
     }
   },
@@ -93,13 +102,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signInWithDiscord: async () => {
     set({ isLoading: true, error: null });
     try {
-      const redirectTo = typeof window !== "undefined"
-        ? `${window.location.origin}/callback`
-        : undefined;
-
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "discord",
-        options: { redirectTo },
+        options: {
+          redirectTo: typeof window !== "undefined"
+            ? `${window.location.origin}/callback`
+            : undefined,
+        },
       });
       if (error) throw error;
     } catch (err: unknown) {
