@@ -30,13 +30,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        set({ session, user: session.user });
-        await get().fetchProfile(session.user.id);
-      }
-
+      // Listen for auth changes (including OAuth redirects)
       supabase.auth.onAuthStateChange(async (_event, session) => {
         set({ session, user: session?.user ?? null });
         if (session?.user) {
@@ -44,11 +38,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } else {
           set({ profile: null });
         }
+        // Mark initialized after first auth event
+        if (!get().isInitialized) {
+          set({ isInitialized: true });
+        }
       });
+
+      // Also check existing session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        set({ session, user: session.user });
+        await get().fetchProfile(session.user.id);
+      }
     } catch {
       set({ error: "Failed to initialize auth" });
     } finally {
-      set({ isInitialized: true });
+      // Ensure we always mark as initialized
+      if (!get().isInitialized) {
+        set({ isInitialized: true });
+      }
     }
   },
 
