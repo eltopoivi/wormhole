@@ -1,13 +1,16 @@
 // Deep Dark Theme — Premium Discord-inspired palette
 export const COLORS = {
   // Backgrounds (deepest to lightest)
-  bgDeepest: "#0a0a0f",    // Server bar, deepest layer
-  bgDark: "#0f0f17",       // Sidebar background
-  bgBase: "#141422",       // Main content background
-  bgElevated: "#1a1a2e",   // Cards, elevated surfaces
-  bgFloat: "#1e1e34",      // Floating elements, modals
-  bgHover: "#252540",      // Hover states
-  bgActive: "#2a2a4a",     // Active/selected states
+  bgDeepest: "#1a1a1e",    // Deepest layer
+  bgDark: "#1e1f23",       // Sidebar background
+  bgBase: "#2b2d31",       // Main content background (dark gray)
+  bgElevated: "#32343a",   // Cards, elevated surfaces
+  bgFloat: "#383a40",      // Floating elements, modals
+  bgHover: "#3f4147",      // Hover states
+  bgActive: "#45474e",     // Active/selected states
+
+  // Own messages highlight
+  bgOwnMessage: "rgba(88, 101, 242, 0.08)",
 
   // Accent
   accent: "#5865f2",       // Discord blurple

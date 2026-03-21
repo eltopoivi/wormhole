@@ -1,8 +1,7 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { View, Platform, useWindowDimensions } from "react-native";
 import { Redirect, Stack, router, usePathname } from "expo-router";
 import { useAuthStore } from "@/stores/auth-store";
-import { ServerBar } from "@/components/layout/ServerBar";
 import { ChannelSidebar } from "@/components/layout/ChannelSidebar";
 import { COLORS } from "@/lib/constants";
 import type { Channel } from "@/types/database";
@@ -19,8 +18,6 @@ export default function MainLayout() {
   const isWeb = Platform.OS === "web";
   const isWide = width >= WEB_BREAKPOINT;
   const showSidebar = isWeb && isWide;
-
-  const isDev = profile?.role === "dev";
 
   // Extract active channel ID from pathname
   const channelMatch = pathname.match(/\/channel\/([^/]+)/);
@@ -56,15 +53,9 @@ export default function MainLayout() {
     );
   }
 
-  // Web wide: three-column layout
+  // Web wide: two-column layout (sidebar + chat)
   return (
     <View style={{ flex: 1, flexDirection: "row", backgroundColor: COLORS.bgBase }}>
-      {/* Server Bar */}
-      <ServerBar
-        isDev={isDev}
-        onSettingsPress={() => router.push("/(main)/admin/panel")}
-      />
-
       {/* Channel Sidebar */}
       <ChannelSidebar
         activeChannelId={activeChannelId}

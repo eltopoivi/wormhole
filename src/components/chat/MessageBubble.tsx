@@ -11,6 +11,7 @@ interface MessageBubbleProps {
   showAvatar: boolean;
   canReact: boolean;
   canReply: boolean;
+  currentUserId?: string;
   onReaction: (messageId: string, emoji: string) => void;
   onReply: () => void;
 }
@@ -54,13 +55,18 @@ function HoverRow({
   children,
   hovered,
   setHovered,
+  isOwn,
   style,
 }: {
   children: React.ReactNode;
   hovered: boolean;
   setHovered: (v: boolean) => void;
+  isOwn?: boolean;
   style?: any;
 }) {
+  const bgDefault = isOwn ? "rgba(88, 101, 242, 0.06)" : "transparent";
+  const bgHover = isOwn ? "rgba(88, 101, 242, 0.12)" : "rgba(255,255,255,0.04)";
+
   if (Platform.OS === "web") {
     return (
       <div
@@ -68,14 +74,14 @@ function HoverRow({
         onMouseLeave={() => setHovered(false)}
         style={{
           ...style,
-          backgroundColor: hovered ? "rgba(37,37,64,0.25)" : "transparent",
+          backgroundColor: hovered ? bgHover : bgDefault,
         }}
       >
         {children}
       </div>
     );
   }
-  return <View style={[style, { backgroundColor: "transparent" }]}>{children}</View>;
+  return <View style={[style, { backgroundColor: bgDefault }]}>{children}</View>;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -83,12 +89,14 @@ export const MessageBubble = memo(function MessageBubble({
   showAvatar,
   canReact,
   canReply,
+  currentUserId,
   onReaction,
   onReply,
 }: MessageBubbleProps) {
   const [hovered, setHovered] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
 
+  const isOwn = currentUserId === message.user_id;
   const username = message.profiles?.username ?? "Unknown";
   const avatarUrl = message.profiles?.avatar_url;
   const role = (message.profiles as any)?.role ?? "member";
@@ -112,6 +120,7 @@ export const MessageBubble = memo(function MessageBubble({
       <HoverRow
         hovered={isVisible}
         setHovered={setHovered}
+        isOwn={isOwn}
         style={{
           display: "flex",
           flexDirection: "row",
@@ -133,7 +142,7 @@ export const MessageBubble = memo(function MessageBubble({
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22 }}>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, fontWeight: "500" }}>
             {message.content}
           </Text>
           {reactions.length > 0 && (
@@ -202,7 +211,7 @@ export const MessageBubble = memo(function MessageBubble({
         {/* Content */}
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "baseline", flexWrap: "wrap" }}>
-            <Text style={{ color: getRoleColor(role), fontWeight: "700", fontSize: 15, marginRight: 4 }}>
+            <Text style={{ color: getRoleColor(role), fontWeight: "600", fontSize: 15, marginRight: 4 }}>
               {username}
             </Text>
             {roleBadge && <Text style={{ fontSize: 11, marginRight: 4 }}>{roleBadge}</Text>}

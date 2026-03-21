@@ -108,6 +108,8 @@ export default function ChannelScreen() {
     [messages]
   );
 
+  const currentUserId = profile?.id;
+
   const renderMessage = useCallback(
     ({ item, index }: { item: MessageWithProfile; index: number }) => (
       <MessageBubble
@@ -115,11 +117,12 @@ export default function ChannelScreen() {
         showAvatar={shouldShowAvatar(index)}
         canReact={canReact}
         canReply={canWrite}
+        currentUserId={currentUserId}
         onReaction={handleReaction}
         onReply={() => setReplyTo(item)}
       />
     ),
-    [shouldShowAvatar, canReact, canWrite, handleReaction]
+    [shouldShowAvatar, canReact, canWrite, currentUserId, handleReaction]
   );
 
   const icon = channelIcon && channelIcon !== "#" ? channelIcon : null;
