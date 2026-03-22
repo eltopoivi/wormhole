@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useChannelStore } from "@/stores/channel-store";
 import { Avatar } from "@/components/ui/Avatar";
 import { EditProfileModal } from "@/components/chat/EditProfileModal";
+import { VoiceChannelWidget } from "@/components/voice/VoiceChannel";
 import { ChannelSkeleton } from "@/components/ui/Skeleton";
 import { COLORS } from "@/lib/constants";
 import type { Channel } from "@/types/database";
@@ -331,6 +332,9 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
           })
         )}
       </ScrollView>
+
+      {/* Voice Channel */}
+      <VoiceChannelWidget />
 
       {/* Bottom User Bar */}
       <View

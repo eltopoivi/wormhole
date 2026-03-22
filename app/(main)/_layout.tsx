@@ -3,6 +3,7 @@ import { View, Platform, useWindowDimensions } from "react-native";
 import { Redirect, Stack, router, usePathname } from "expo-router";
 import { useAuthStore } from "@/stores/auth-store";
 import { ChannelSidebar } from "@/components/layout/ChannelSidebar";
+import { VoiceRoomOverlay } from "@/components/voice/VoiceRoom";
 import { COLORS } from "@/lib/constants";
 import type { Channel } from "@/types/database";
 
@@ -64,7 +65,7 @@ export default function MainLayout() {
       />
 
       {/* Main Content Area */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, position: "relative" } as any}>
         <Stack
           screenOptions={{
             headerShown: false,
@@ -72,6 +73,8 @@ export default function MainLayout() {
             animation: "none",
           }}
         />
+        {/* Voice room overlay (shows when video/screen share active) */}
+        <VoiceRoomOverlay />
       </View>
     </View>
   );
