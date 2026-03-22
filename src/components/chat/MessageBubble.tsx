@@ -145,9 +145,7 @@ export const MessageBubble = memo(function MessageBubble({
 
         <View style={{ flex: 1 }}>
           {message.content ? (
-            <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, fontWeight: "500" }}>
-              {message.content}
-            </Text>
+            <MessageText content={message.content} style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, fontWeight: "500" }} />
           ) : null}
           {imageUrl && <MessageImage uri={imageUrl} />}
           {reactions.length > 0 && (
@@ -226,9 +224,7 @@ export const MessageBubble = memo(function MessageBubble({
           </View>
 
           {message.content ? (
-            <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 2 }}>
-              {message.content}
-            </Text>
+            <MessageText content={message.content} style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 2 }} />
           ) : null}
           {imageUrl && <MessageImage uri={imageUrl} />}
 
@@ -252,6 +248,24 @@ export const MessageBubble = memo(function MessageBubble({
     </HoverRow>
   );
 });
+
+/** Renders message text with @mentions highlighted */
+function MessageText({ content, style }: { content: string; style: any }) {
+  const parts = content.split(/(@\w+)/g);
+  return (
+    <Text style={style}>
+      {parts.map((part, i) =>
+        part.startsWith("@") ? (
+          <Text key={i} style={{ color: COLORS.accent, fontWeight: "600", backgroundColor: "rgba(88,101,242,0.15)", borderRadius: 3 }}>
+            {part}
+          </Text>
+        ) : (
+          <Text key={i}>{part}</Text>
+        )
+      )}
+    </Text>
+  );
+}
 
 /** Image attachment in message */
 function MessageImage({ uri }: { uri: string }) {

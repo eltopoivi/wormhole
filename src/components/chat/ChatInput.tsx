@@ -1,7 +1,14 @@
-import { useState, useRef, useCallback } from "react";
-import { View, TextInput, Pressable, Text, Platform, Image } from "react-native";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { View, TextInput, Pressable, Text, Platform, Image, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@/lib/constants";
+import { supabase } from "@/lib/supabase";
+
+interface MemberSuggestion {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+}
 
 interface ChatInputProps {
   channelName: string;
@@ -13,8 +20,73 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
   const [text, setText] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<MemberSuggestion[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [allMembers, setAllMembers] = useState<MemberSuggestion[]>([]);
   const inputRef = useRef<TextInput>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Fetch all members once for autocomplete
+  useEffect(() => {
+    supabase
+      .from("profiles")
+      .select("id, username, avatar_url")
+      .order("username")
+      .then(({ data }) => {
+        if (data) setAllMembers(data as MemberSuggestion[]);
+      });
+  }, []);
+
+  // Filter suggestions when mention query changes
+  useEffect(() => {
+    if (mentionQuery === null) {
+      setSuggestions([]);
+      return;
+    }
+    const q = mentionQuery.toLowerCase();
+    const filtered = allMembers.filter((m) =>
+      m.username.toLowerCase().includes(q)
+    ).slice(0, 6);
+    setSuggestions(filtered);
+    setSelectedIndex(0);
+  }, [mentionQuery, allMembers]);
+
+  const handleTextChange = useCallback((newText: string) => {
+    setText(newText);
+
+    // Detect @mention trigger
+    // Find the last @ that isn't preceded by a non-space char
+    const cursorPos = newText.length; // approximate (works for typing at end)
+    const beforeCursor = newText.substring(0, cursorPos);
+    const atIndex = beforeCursor.lastIndexOf("@");
+
+    if (atIndex >= 0) {
+      // Check that @ is at start or preceded by whitespace
+      const charBefore = atIndex > 0 ? beforeCursor[atIndex - 1] : " ";
+      if (charBefore === " " || charBefore === "\n" || atIndex === 0) {
+        const query = beforeCursor.substring(atIndex + 1);
+        // Only show suggestions if no space in query (single word)
+        if (!query.includes(" ") && query.length <= 20) {
+          setMentionQuery(query);
+          return;
+        }
+      }
+    }
+    setMentionQuery(null);
+  }, []);
+
+  const insertMention = useCallback((username: string) => {
+    const atIndex = text.lastIndexOf("@");
+    if (atIndex >= 0) {
+      const before = text.substring(0, atIndex);
+      const newText = `${before}@${username} `;
+      setText(newText);
+    }
+    setMentionQuery(null);
+    setSuggestions([]);
+    inputRef.current?.focus();
+  }, [text]);
 
   const handleSend = useCallback(() => {
     if ((!text.trim() && !imageFile) || isSending) return;
@@ -22,6 +94,7 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
     setText("");
     setImageFile(null);
     setImagePreview(null);
+    setMentionQuery(null);
     inputRef.current?.focus();
   }, [text, imageFile, isSending, onSend]);
 
@@ -31,18 +104,42 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
     (e: any) => {
       if (Platform.OS === "web") {
         const nativeEvent = e.nativeEvent;
+
+        // Handle mention navigation
+        if (suggestions.length > 0) {
+          if (nativeEvent.key === "ArrowUp") {
+            e.preventDefault();
+            setSelectedIndex((i) => (i > 0 ? i - 1 : suggestions.length - 1));
+            return;
+          }
+          if (nativeEvent.key === "ArrowDown") {
+            e.preventDefault();
+            setSelectedIndex((i) => (i < suggestions.length - 1 ? i + 1 : 0));
+            return;
+          }
+          if (nativeEvent.key === "Tab" || (nativeEvent.key === "Enter" && !nativeEvent.shiftKey)) {
+            e.preventDefault();
+            insertMention(suggestions[selectedIndex].username);
+            return;
+          }
+          if (nativeEvent.key === "Escape") {
+            e.preventDefault();
+            setMentionQuery(null);
+            return;
+          }
+        }
+
         if (nativeEvent.key === "Enter" && !nativeEvent.shiftKey) {
           e.preventDefault();
           handleSend();
         }
       }
     },
-    [handleSend]
+    [handleSend, suggestions, selectedIndex, insertMention]
   );
 
   const handleImagePick = useCallback(() => {
     if (Platform.OS === "web") {
-      // Create hidden file input and click it
       if (!fileInputRef.current) {
         const input = document.createElement("input");
         input.type = "file";
@@ -125,6 +222,66 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
         </View>
       )}
 
+      {/* Mention suggestions dropdown */}
+      {suggestions.length > 0 && (
+        <View
+          style={{
+            marginBottom: 4,
+            backgroundColor: COLORS.bgFloat,
+            borderRadius: 8,
+            borderWidth: 1,
+            borderColor: COLORS.glassBorder,
+            overflow: "hidden",
+            maxHeight: 240,
+          }}
+        >
+          <ScrollView keyboardShouldPersistTaps="always">
+            {suggestions.map((member, i) => (
+              <Pressable
+                key={member.id}
+                onPress={() => insertMention(member.username)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  backgroundColor: i === selectedIndex ? COLORS.bgHover : "transparent",
+                  cursor: "pointer",
+                } as any}
+              >
+                {/* Mini avatar */}
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    backgroundColor: COLORS.bgActive,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 8,
+                    overflow: "hidden",
+                  }}
+                >
+                  {member.avatar_url ? (
+                    <Image
+                      source={{ uri: member.avatar_url }}
+                      style={{ width: 24, height: 24, borderRadius: 12 }}
+                    />
+                  ) : (
+                    <Text style={{ color: COLORS.textPrimary, fontSize: 11, fontWeight: "700" }}>
+                      {member.username.charAt(0).toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: "500" }}>
+                  {member.username}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       <View
         style={{
           flexDirection: "row",
@@ -171,7 +328,7 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
           placeholder={`Message #${channelName}`}
           placeholderTextColor={COLORS.textMuted}
           value={text}
-          onChangeText={setText}
+          onChangeText={handleTextChange}
           multiline
           maxLength={2000}
           blurOnSubmit={false}
