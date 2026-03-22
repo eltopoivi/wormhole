@@ -17,6 +17,7 @@ interface AuthState {
   signInWithDiscord: () => Promise<void>;
   signOut: () => Promise<void>;
   fetchProfile: (userId: string) => Promise<void>;
+  updateProfile: (updates: { username?: string; bio?: string; avatar_url?: string }) => Promise<void>;
   clearError: () => void;
 }
 
@@ -137,7 +138,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     for (let attempt = 0; attempt < 2; attempt++) {
       const { data } = await supabase
         .from("profiles")
-        .select("id, username, avatar_url, is_verified, role, status, created_at, updated_at")
+        .select("id, username, avatar_url, bio, is_verified, role, status, created_at, updated_at")
         .eq("id", userId)
         .single();
 
@@ -147,6 +148,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
     }
+  },
+
+  updateProfile: async (updates) => {
+    const userId = get().user?.id;
+    if (!userId) return;
+
+    let avatarUrl = updates.avatar_url;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        ...(updates.username ? { username: updates.username } : {}),
+        ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
+        ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    if (error) throw error;
+    await get().fetchProfile(userId);
   },
 
   clearError: () => set({ error: null }),

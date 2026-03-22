@@ -3,6 +3,8 @@ import { View, Text, Pressable, Platform, Image } from "react-native";
 import { format, isToday, isYesterday } from "date-fns";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/ui/Avatar";
+import { ProfileCard } from "@/components/chat/ProfileCard";
+import { EditProfileModal } from "@/components/chat/EditProfileModal";
 import { COLORS } from "@/lib/constants";
 import type { MessageWithProfile } from "@/types/database";
 
@@ -96,6 +98,8 @@ export const MessageBubble = memo(function MessageBubble({
 }: MessageBubbleProps) {
   const [hovered, setHovered] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [showProfileCard, setShowProfileCard] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const isOwn = currentUserId === message.user_id;
   const username = message.profiles?.username ?? "Unknown";
@@ -206,17 +210,19 @@ export const MessageBubble = memo(function MessageBubble({
       )}
 
       <View style={{ flexDirection: "row" }}>
-        {/* Avatar */}
-        <View style={{ marginRight: 12, width: 40 }}>
+        {/* Avatar — clickable */}
+        <Pressable onPress={() => setShowProfileCard(true)} style={{ marginRight: 12, width: 40, cursor: "pointer" } as any}>
           <Avatar name={username} uri={avatarUrl} size="md" />
-        </View>
+        </Pressable>
 
         {/* Content */}
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "baseline", flexWrap: "wrap" }}>
-            <Text style={{ color: getRoleColor(role), fontWeight: "600", fontSize: 15, marginRight: 4 }}>
-              {username}
-            </Text>
+            <Pressable onPress={() => setShowProfileCard(true)} style={{ cursor: "pointer" } as any}>
+              <Text style={{ color: getRoleColor(role), fontWeight: "600", fontSize: 15, marginRight: 4 }}>
+                {username}
+              </Text>
+            </Pressable>
             {roleBadge && <Text style={{ fontSize: 11, marginRight: 4 }}>{roleBadge}</Text>}
             <Text style={{ color: COLORS.textFaint, fontSize: 11 }}>
               {formatMessageTime(message.created_at)}
@@ -244,6 +250,24 @@ export const MessageBubble = memo(function MessageBubble({
           onReply={() => { onReply(); setShowEmojis(false); }}
           onReact={handleReact}
         />
+      )}
+
+      {/* Profile card popup */}
+      {showProfileCard && (
+        <ProfileCard
+          userId={message.user_id}
+          isOwnProfile={isOwn}
+          onClose={() => setShowProfileCard(false)}
+          onEditProfile={() => {
+            setShowProfileCard(false);
+            setShowEditProfile(true);
+          }}
+        />
+      )}
+
+      {/* Edit profile modal */}
+      {showEditProfile && (
+        <EditProfileModal onClose={() => setShowEditProfile(false)} />
       )}
     </HoverRow>
   );

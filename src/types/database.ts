@@ -14,6 +14,7 @@ export interface Database {
           id: string;
           username: string;
           avatar_url: string | null;
+          bio: string | null;
           is_verified: boolean;
           role: "dev" | "admin" | "mod" | "member";
           status: "online" | "idle" | "dnd" | "offline";
@@ -24,6 +25,7 @@ export interface Database {
           id: string;
           username: string;
           avatar_url?: string | null;
+          bio?: string | null;
           is_verified?: boolean;
           role?: "dev" | "admin" | "mod" | "member";
           status?: "online" | "idle" | "dnd" | "offline";
@@ -34,6 +36,7 @@ export interface Database {
           id?: string;
           username?: string;
           avatar_url?: string | null;
+          bio?: string | null;
           is_verified?: boolean;
           role?: "dev" | "admin" | "mod" | "member";
           status?: "online" | "idle" | "dnd" | "offline";
