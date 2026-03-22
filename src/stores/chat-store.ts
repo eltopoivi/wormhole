@@ -141,7 +141,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       // Refresh messages to get updated reaction counts
-      const channelId = get().messages[0]?.channel_id;
+      const msg = get().messages.find((m) => m.id === messageId);
+      const channelId = msg?.channel_id ?? get().messages[0]?.channel_id;
       if (channelId) await get().fetchMessages(channelId);
     } catch (err: unknown) {
       console.error("Failed to toggle reaction:", err);

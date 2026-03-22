@@ -16,7 +16,8 @@ interface MessageBubbleProps {
   onReply: () => void;
 }
 
-const QUICK_EMOJIS = ["⚡", "🔥", "❤️", "😂", "👍", "💀"];
+const QUICK_EMOJIS_SHORT = ["⚡", "🔥", "❤️"];
+const QUICK_EMOJIS_ALL = ["⚡", "🔥", "❤️", "😂", "👍", "💀", "👀", "🎯", "💯"];
 
 function formatMessageTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -291,7 +292,7 @@ function ReactionBar({
   );
 }
 
-/** Floating toolbar: react + reply + emoji picker */
+/** Floating toolbar: quick react emojis + expand + reply */
 function ActionToolbar({
   canReact,
   canReply,
@@ -309,7 +310,7 @@ function ActionToolbar({
 }) {
   return (
     <View style={{ position: "absolute", right: 12, top: 0, zIndex: 20 } as any}>
-      {/* Main buttons */}
+      {/* Main bar: 3 quick emojis + expand + reply */}
       <View
         style={{
           flexDirection: "row",
@@ -320,6 +321,23 @@ function ActionToolbar({
           overflow: "hidden",
         }}
       >
+        {canReact &&
+          QUICK_EMOJIS_SHORT.map((emoji) => (
+            <Pressable
+              key={emoji}
+              onPress={() => onReact(emoji)}
+              style={({ pressed }) => ({
+                width: 32,
+                height: 32,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: pressed ? COLORS.bgHover : "transparent",
+                cursor: "pointer",
+              } as any)}
+            >
+              <Text style={{ fontSize: 16 }}>{emoji}</Text>
+            </Pressable>
+          ))}
         {canReact && (
           <Pressable
             onPress={onToggleEmojis}
@@ -332,7 +350,7 @@ function ActionToolbar({
               cursor: "pointer",
             } as any)}
           >
-            <Text style={{ fontSize: 16 }}>⚡</Text>
+            <Ionicons name="add" size={18} color={COLORS.textMuted} />
           </Pressable>
         )}
         {canReply && (
@@ -352,7 +370,7 @@ function ActionToolbar({
         )}
       </View>
 
-      {/* Emoji picker dropdown */}
+      {/* Expanded emoji picker */}
       {showEmojis && (
         <View
           style={{
@@ -361,7 +379,7 @@ function ActionToolbar({
             top: 36,
             flexDirection: "row",
             flexWrap: "wrap",
-            width: 148,
+            width: 180,
             gap: 2,
             backgroundColor: COLORS.bgFloat,
             borderRadius: 8,
@@ -371,13 +389,13 @@ function ActionToolbar({
             zIndex: 30,
           }}
         >
-          {QUICK_EMOJIS.map((emoji) => (
+          {QUICK_EMOJIS_ALL.map((emoji: string) => (
             <Pressable
               key={emoji}
               onPress={() => onReact(emoji)}
               style={({ pressed }) => ({
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: 6,
