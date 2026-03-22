@@ -30,33 +30,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // Set up auth state listener FIRST
-      // This catches OAuth redirects, session refreshes, sign-in/out
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (_event, session) => {
-          set({ session, user: session?.user ?? null });
-          if (session?.user) {
-            await get().fetchProfile(session.user.id);
-          } else {
-            set({ profile: null });
-          }
-          // If this is the first event and we haven't initialized yet, do it
-          if (!get().isInitialized) {
-            set({ isInitialized: true });
-          }
-        }
-      );
+      // Listen for auth state changes
+      // INITIAL_SESSION fires after URL token processing (detectSessionInUrl) completes
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        set({ session, user: session?.user ?? null });
 
-      // Also actively check for session (in case listener hasn't fired yet)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        set({ session, user: session.user });
-        await get().fetchProfile(session.user.id);
-      }
+        if (session?.user) {
+          await get().fetchProfile(session.user.id);
+        } else {
+          set({ profile: null });
+        }
+
+        // Only mark initialized after the initial session check completes
+        // This ensures OAuth tokens from the URL have been processed
+        if (event === "INITIAL_SESSION") {
+          set({ isInitialized: true });
+        }
+      });
+
+      // Safety timeout: if INITIAL_SESSION never fires, still unblock the app
+      setTimeout(() => {
+        if (!get().isInitialized) {
+          set({ isInitialized: true });
+        }
+      }, 5000);
     } catch (err) {
       console.error("[auth] initialize error:", err);
-    } finally {
-      // Always mark as initialized
       set({ isInitialized: true });
     }
   },
