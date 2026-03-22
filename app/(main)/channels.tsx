@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/stores/auth-store";
 import { useChannelStore } from "@/stores/channel-store";
 import { Avatar } from "@/components/ui/Avatar";
+import { VoiceChannelWidget } from "@/components/voice/VoiceChannel";
 import { ChannelSkeleton } from "@/components/ui/Skeleton";
 import { COLORS } from "@/lib/constants";
 import type { Channel } from "@/types/database";
@@ -85,13 +86,8 @@ function MobileChannelList() {
     }
     const group = grouped.find((g) => g.category === ch.category)!;
     if (ch.channel_mode === "verification") continue;
-    if (ch.channel_mode === "disabled") {
-      group.items.push(ch);
-    } else if (ch.channel_mode === "private" && !hasAccessToChannel(ch, userRole)) {
-      if (isDev) group.items.push(ch);
-    } else {
-      group.items.push(ch);
-    }
+    // Show all channels on mobile (including private with lock icon)
+    group.items.push(ch);
   }
 
   const handleChannelPress = useCallback((channel: Channel) => {
@@ -188,6 +184,9 @@ function MobileChannelList() {
           ))
         )}
       </ScrollView>
+
+      {/* Voice Channel */}
+      <VoiceChannelWidget />
 
       {/* Bottom User Bar */}
       <View
