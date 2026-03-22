@@ -75,10 +75,10 @@ export default function ChannelScreen() {
   }, [messages.length]);
 
   const handleSend = useCallback(
-    async (content: string) => {
+    async (content: string, imageFile?: File) => {
       if (channelId) {
         try {
-          await sendMessage(channelId, content, replyTo?.id);
+          await sendMessage(channelId, content, replyTo?.id, imageFile);
           setReplyTo(null);
         } catch (err) {
           console.error("[ChannelScreen] Send failed:", err);

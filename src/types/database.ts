@@ -120,6 +120,7 @@ export interface Database {
           channel_id: string;
           user_id: string;
           content: string;
+          image_url: string | null;
           reply_to_id: string | null;
           edited_at: string | null;
           created_at: string;
@@ -129,12 +130,14 @@ export interface Database {
           channel_id: string;
           user_id: string;
           content: string;
+          image_url?: string | null;
           reply_to_id?: string | null;
           edited_at?: string | null;
           created_at?: string;
         };
         Update: {
           content?: string;
+          image_url?: string | null;
           edited_at?: string;
         };
         Relationships: [

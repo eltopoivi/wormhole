@@ -11,7 +11,7 @@ interface ChatState {
   realtimeChannel: RealtimeChannel | null;
 
   fetchMessages: (channelId: string) => Promise<void>;
-  sendMessage: (channelId: string, content: string, replyToId?: string) => Promise<void>;
+  sendMessage: (channelId: string, content: string, replyToId?: string, imageFile?: File) => Promise<void>;
   toggleReaction: (messageId: string, emoji: string) => Promise<void>;
   subscribeToChannel: (channelId: string) => void;
   unsubscribe: () => void;
@@ -91,19 +91,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  sendMessage: async (channelId, content, replyToId) => {
-    if (!content.trim()) return;
+  sendMessage: async (channelId, content, replyToId, imageFile) => {
+    if (!content.trim() && !imageFile) return;
     set({ isSending: true, error: null });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      let imageUrl: string | null = null;
+
+      // Upload image if provided
+      if (imageFile) {
+        const ext = imageFile.name.split(".").pop() || "png";
+        const path = `${user.id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("chat-images")
+          .upload(path, imageFile, { contentType: imageFile.type });
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("chat-images")
+          .getPublicUrl(path);
+        imageUrl = urlData.publicUrl;
+      }
+
       const insertData: any = {
         channel_id: channelId,
         user_id: user.id,
-        content: content.trim(),
+        content: content.trim() || (imageUrl ? "" : ""),
       };
       if (replyToId) insertData.reply_to_id = replyToId;
+      if (imageUrl) insertData.image_url = imageUrl;
 
       const { error } = await supabase.from("messages").insert(insertData as any);
       if (error) throw error;

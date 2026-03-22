@@ -1,5 +1,5 @@
 import { memo, useState, useCallback } from "react";
-import { View, Text, Pressable, Platform } from "react-native";
+import { View, Text, Pressable, Platform, Image } from "react-native";
 import { format, isToday, isYesterday } from "date-fns";
 import { Ionicons } from "@expo/vector-icons";
 import { Avatar } from "@/components/ui/Avatar";
@@ -104,6 +104,7 @@ export const MessageBubble = memo(function MessageBubble({
   const roleBadge = getRoleBadge(role);
   const replyData = message.reply_to as any;
   const reactions = message.reactions_grouped ?? [];
+  const imageUrl = (message as any).image_url as string | null;
 
   const handleReact = useCallback(
     (emoji: string) => {
@@ -143,9 +144,12 @@ export const MessageBubble = memo(function MessageBubble({
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, fontWeight: "500" }}>
-            {message.content}
-          </Text>
+          {message.content ? (
+            <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, fontWeight: "500" }}>
+              {message.content}
+            </Text>
+          ) : null}
+          {imageUrl && <MessageImage uri={imageUrl} />}
           {reactions.length > 0 && (
             <ReactionBar reactions={reactions} onReaction={handleReact} canReact={canReact} />
           )}
@@ -221,9 +225,12 @@ export const MessageBubble = memo(function MessageBubble({
             </Text>
           </View>
 
-          <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 2 }}>
-            {message.content}
-          </Text>
+          {message.content ? (
+            <Text style={{ color: COLORS.textSecondary, fontSize: 15, lineHeight: 22, marginTop: 2 }}>
+              {message.content}
+            </Text>
+          ) : null}
+          {imageUrl && <MessageImage uri={imageUrl} />}
 
           {reactions.length > 0 && (
             <ReactionBar reactions={reactions} onReaction={handleReact} canReact={canReact} />
@@ -245,6 +252,30 @@ export const MessageBubble = memo(function MessageBubble({
     </HoverRow>
   );
 });
+
+/** Image attachment in message */
+function MessageImage({ uri }: { uri: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <Pressable
+      onPress={() => setExpanded(!expanded)}
+      style={{ marginTop: 6, cursor: "pointer" } as any}
+    >
+      <Image
+        source={{ uri }}
+        style={{
+          width: expanded ? 480 : 300,
+          height: expanded ? 360 : 200,
+          maxWidth: "100%",
+          borderRadius: 8,
+          backgroundColor: COLORS.bgElevated,
+        } as any}
+        resizeMode="cover"
+      />
+    </Pressable>
+  );
+}
 
 /** Reaction pills below message */
 function ReactionBar({

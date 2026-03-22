@@ -1,28 +1,32 @@
 import { useState, useRef, useCallback } from "react";
-import { View, TextInput, Pressable, Text, Platform } from "react-native";
+import { View, TextInput, Pressable, Text, Platform, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "@/lib/constants";
 
 interface ChatInputProps {
   channelName: string;
-  onSend: (content: string) => void;
+  onSend: (content: string, imageFile?: File) => void;
   isSending: boolean;
 }
 
 export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
   const [text, setText] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSend = useCallback(() => {
-    if (!text.trim() || isSending) return;
-    onSend(text);
+    if ((!text.trim() && !imageFile) || isSending) return;
+    onSend(text, imageFile ?? undefined);
     setText("");
+    setImageFile(null);
+    setImagePreview(null);
     inputRef.current?.focus();
-  }, [text, isSending, onSend]);
+  }, [text, imageFile, isSending, onSend]);
 
-  const canSend = text.trim().length > 0 && !isSending;
+  const canSend = (text.trim().length > 0 || imageFile) && !isSending;
 
-  // On web: Enter sends, Shift+Enter adds newline
   const handleKeyPress = useCallback(
     (e: any) => {
       if (Platform.OS === "web") {
@@ -36,6 +40,40 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
     [handleSend]
   );
 
+  const handleImagePick = useCallback(() => {
+    if (Platform.OS === "web") {
+      // Create hidden file input and click it
+      if (!fileInputRef.current) {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.style.display = "none";
+        input.addEventListener("change", (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (file) {
+            if (file.size > 10 * 1024 * 1024) {
+              alert("Image must be under 10MB");
+              return;
+            }
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onload = () => setImagePreview(reader.result as string);
+            reader.readAsDataURL(file);
+          }
+        });
+        document.body.appendChild(input);
+        fileInputRef.current = input;
+      }
+      fileInputRef.current.value = "";
+      fileInputRef.current.click();
+    }
+  }, []);
+
+  const removeImage = useCallback(() => {
+    setImageFile(null);
+    setImagePreview(null);
+  }, []);
+
   return (
     <View
       style={{
@@ -44,6 +82,49 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
         paddingBottom: Platform.OS === "web" ? 16 : 12,
       }}
     >
+      {/* Image preview */}
+      {imagePreview && (
+        <View
+          style={{
+            marginBottom: 8,
+            backgroundColor: COLORS.bgElevated,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: COLORS.glassBorder,
+            padding: 8,
+            alignSelf: "flex-start",
+          }}
+        >
+          <View style={{ position: "relative" }}>
+            <Image
+              source={{ uri: imagePreview }}
+              style={{ width: 200, height: 150, borderRadius: 8 }}
+              resizeMode="cover"
+            />
+            <Pressable
+              onPress={removeImage}
+              style={{
+                position: "absolute",
+                top: 4,
+                right: 4,
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: "rgba(0,0,0,0.7)",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              } as any}
+            >
+              <Ionicons name="close" size={14} color="#fff" />
+            </Pressable>
+          </View>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 4 }} numberOfLines={1}>
+            {imageFile?.name}
+          </Text>
+        </View>
+      )}
+
       <View
         style={{
           flexDirection: "row",
@@ -58,8 +139,9 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
           minHeight: 48,
         }}
       >
-        {/* Plus button */}
+        {/* Plus button — opens image picker */}
         <Pressable
+          onPress={handleImagePick}
           style={({ pressed }) => ({
             width: 36,
             height: 36,
@@ -68,7 +150,8 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
             justifyContent: "center",
             backgroundColor: pressed ? COLORS.bgHover : "transparent",
             marginBottom: 1,
-          })}
+            cursor: "pointer",
+          } as any)}
         >
           <Ionicons name="add-circle" size={24} color={COLORS.textMuted} />
         </Pressable>
@@ -96,8 +179,9 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
           onSubmitEditing={handleSend}
         />
 
-        {/* Emoji button */}
+        {/* Image button */}
         <Pressable
+          onPress={handleImagePick}
           style={({ pressed }) => ({
             width: 36,
             height: 36,
@@ -106,9 +190,10 @@ export function ChatInput({ channelName, onSend, isSending }: ChatInputProps) {
             justifyContent: "center",
             backgroundColor: pressed ? COLORS.bgHover : "transparent",
             marginBottom: 1,
-          })}
+            cursor: "pointer",
+          } as any)}
         >
-          <Ionicons name="happy-outline" size={22} color={COLORS.textMuted} />
+          <Ionicons name="image-outline" size={22} color={COLORS.textMuted} />
         </Pressable>
 
         {/* Send button */}
