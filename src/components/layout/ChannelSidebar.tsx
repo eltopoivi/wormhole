@@ -12,7 +12,7 @@ import type { Channel } from "@/types/database";
 // Try to load banner gif, fallback to animated placeholder
 let bannerSource: any = null;
 try {
-  bannerSource = require("../../../assets/wormhole-banner.gif");
+  bannerSource = require("../../../assets/wormhole.gif");
 } catch {
   // gif doesn't exist yet
 }
