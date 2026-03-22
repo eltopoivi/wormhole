@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { View, Text, ScrollView, Pressable, Alert, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useAuthStore } from "@/stores/auth-store";
 import { useChannelStore } from "@/stores/channel-store";
 import { Avatar } from "@/components/ui/Avatar";
@@ -219,6 +220,22 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
             <Text style={{ color: COLORS.textMuted, fontSize: 10 }}>Online</Text>
           </View>
         </View>
+        {isDev && (
+          <Pressable
+            onPress={() => router.push("/(main)/admin/panel")}
+            style={({ pressed }) => ({
+              width: 32,
+              height: 32,
+              borderRadius: 4,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? COLORS.bgHover : "transparent",
+              cursor: "pointer",
+            } as any)}
+          >
+            <Ionicons name="settings-outline" size={18} color={COLORS.textMuted} />
+          </Pressable>
+        )}
         <Pressable
           onPress={handleSignOut}
           style={({ pressed }) => ({
