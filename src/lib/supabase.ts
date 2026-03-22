@@ -1,13 +1,17 @@
-import "react-native-url-polyfill/auto";
 import { Platform } from "react-native";
 import { createClient } from "@supabase/supabase-js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Database } from "@/types/database";
 
+// Only import URL polyfill on native (it breaks Supabase's URL parsing on web)
+if (Platform.OS !== "web") {
+  require("react-native-url-polyfill/auto");
+}
+
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-// On web, use localStorage directly (AsyncStorage causes issues with OAuth)
+// On web, use localStorage directly for reliable OAuth token persistence
 const webStorage = {
   getItem: (key: string) => {
     const value = globalThis.localStorage?.getItem(key) ?? null;
@@ -30,10 +34,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: isWeb ? webStorage : AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    // Do NOT let Supabase auto-detect URL tokens — we handle it manually in /callback
-    // react-native-url-polyfill can interfere with Supabase's hash parsing
-    detectSessionInUrl: false,
-    // Use implicit flow on web to avoid PKCE code verifier issues
-    ...(isWeb ? { flowType: "implicit" as const } : {}),
+    // On web, let Supabase auto-detect tokens from URL (PKCE code or implicit hash)
+    detectSessionInUrl: isWeb,
   },
 });

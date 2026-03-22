@@ -30,25 +30,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // Listen for future auth state changes (sign in, sign out, token refresh)
-      supabase.auth.onAuthStateChange(async (_event, session) => {
+      // onAuthStateChange triggers Supabase's internal init, which:
+      // - Processes OAuth tokens from URL (if detectSessionInUrl: true)
+      // - Loads session from storage
+      // - Fires INITIAL_SESSION when done
+      supabase.auth.onAuthStateChange(async (event, session) => {
         set({ session, user: session?.user ?? null });
         if (session?.user) {
           await get().fetchProfile(session.user.id);
         } else {
           set({ profile: null });
         }
+        // INITIAL_SESSION fires AFTER URL tokens have been processed
+        if (event === "INITIAL_SESSION") {
+          set({ isInitialized: true });
+        }
       });
 
-      // Check if there's already a session in storage
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        set({ session, user: session.user });
-        await get().fetchProfile(session.user.id);
-      }
+      // Fallback: if INITIAL_SESSION never fires, unblock after 4s
+      setTimeout(() => {
+        if (!get().isInitialized) {
+          console.warn("[auth] INITIAL_SESSION timeout, forcing init");
+          set({ isInitialized: true });
+        }
+      }, 4000);
     } catch (err) {
       console.error("[auth] initialize error:", err);
-    } finally {
       set({ isInitialized: true });
     }
   },
@@ -100,6 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           redirectTo: typeof window !== "undefined"
             ? `${window.location.origin}/callback`
             : undefined,
+          skipBrowserRedirect: false,
         },
       });
       if (error) throw error;
