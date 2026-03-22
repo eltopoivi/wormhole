@@ -1,9 +1,9 @@
 // Deep Dark Theme — Premium Discord-inspired palette
 export const COLORS = {
   // Backgrounds (deepest to lightest)
-  bgDeepest: "#1a1a1e",    // Deepest layer
-  bgDark: "#1e1f23",       // Sidebar background
-  bgBase: "#2b2d31",       // Main content background (dark gray)
+  bgDeepest: "#111214",    // Deepest layer (user bar)
+  bgDark: "#1a1a1e",       // Sidebar background (black, not too dark)
+  bgBase: "#202225",       // Main chat background (very dark gray)
   bgElevated: "#32343a",   // Cards, elevated surfaces
   bgFloat: "#383a40",      // Floating elements, modals
   bgHover: "#3f4147",      // Hover states
