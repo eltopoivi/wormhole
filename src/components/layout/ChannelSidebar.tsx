@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import { useAuthStore } from "@/stores/auth-store";
 import { useChannelStore } from "@/stores/channel-store";
 import { Avatar } from "@/components/ui/Avatar";
+import { EditProfileModal } from "@/components/chat/EditProfileModal";
 import { ChannelSkeleton } from "@/components/ui/Skeleton";
 import { COLORS } from "@/lib/constants";
 import type { Channel } from "@/types/database";
@@ -60,6 +61,7 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
   const { channels, isLoading, memberCount, fetchChannels, fetchPrivateAccess, fetchMemberCount, hasAccessToChannel } =
     useChannelStore();
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   useEffect(() => {
     fetchChannels();
@@ -342,16 +344,18 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
           borderTopColor: COLORS.border,
         }}
       >
-        <Avatar name={profile?.username ?? "U"} uri={profile?.avatar_url} size="sm" />
-        <View style={{ marginLeft: 8, flex: 1 }}>
-          <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: "600" }} numberOfLines={1}>
-            {profile?.username ?? "User"}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.online, marginRight: 4 }} />
-            <Text style={{ color: COLORS.textMuted, fontSize: 10 }}>Online</Text>
+        <Pressable onPress={() => setShowEditProfile(true)} style={{ flexDirection: "row", alignItems: "center", flex: 1, cursor: "pointer" } as any}>
+          <Avatar name={profile?.username ?? "U"} uri={profile?.avatar_url} size="sm" />
+          <View style={{ marginLeft: 8, flex: 1 }}>
+            <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: "600" }} numberOfLines={1}>
+              {profile?.username ?? "User"}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.online, marginRight: 4 }} />
+              <Text style={{ color: COLORS.textMuted, fontSize: 10 }}>Online</Text>
+            </View>
           </View>
-        </View>
+        </Pressable>
         {isDev && (
           <Pressable
             onPress={() => router.push("/(main)/admin/panel")}
@@ -383,6 +387,11 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
           <Ionicons name="log-out-outline" size={18} color={COLORS.textMuted} />
         </Pressable>
       </View>
+
+      {/* Edit profile modal */}
+      {showEditProfile && (
+        <EditProfileModal onClose={() => setShowEditProfile(false)} />
+      )}
     </View>
   );
 }

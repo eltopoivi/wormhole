@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
 import { View, Text, Pressable, Platform, Image } from "react-native";
 import { format, isToday, isYesterday } from "date-fns";
 import { Ionicons } from "@expo/vector-icons";
@@ -273,21 +273,65 @@ export const MessageBubble = memo(function MessageBubble({
   );
 });
 
-/** Renders message text with @mentions highlighted */
+/** Renders message text with @mentions highlighted and clickable */
 function MessageText({ content, style }: { content: string; style: any }) {
+  const [mentionUserId, setMentionUserId] = useState<string | null>(null);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [members, setMembers] = useState<{ id: string; username: string }[]>([]);
+
+  // Lazy-load members list only if there are mentions
+  const hasMentions = content.includes("@");
+  useEffect(() => {
+    if (!hasMentions) return;
+    import("@/lib/supabase").then(({ supabase }) => {
+      supabase.from("profiles").select("id, username").then(({ data }) => {
+        if (data) setMembers(data);
+      });
+    });
+  }, [hasMentions]);
+
   const parts = content.split(/(@\w+)/g);
+
+  const handleMentionPress = (mentionText: string) => {
+    const username = mentionText.substring(1); // remove @
+    const member = members.find((m) => m.username.toLowerCase() === username.toLowerCase());
+    if (member) {
+      setMentionUserId(member.id);
+    }
+  };
+
   return (
-    <Text style={style}>
-      {parts.map((part, i) =>
-        part.startsWith("@") ? (
-          <Text key={i} style={{ color: COLORS.accent, fontWeight: "600", backgroundColor: "rgba(88,101,242,0.15)", borderRadius: 3 }}>
-            {part}
-          </Text>
-        ) : (
-          <Text key={i}>{part}</Text>
-        )
+    <>
+      <Text style={style}>
+        {parts.map((part, i) =>
+          part.startsWith("@") ? (
+            <Text
+              key={i}
+              onPress={() => handleMentionPress(part)}
+              style={{ color: COLORS.accent, fontWeight: "600", backgroundColor: "rgba(88,101,242,0.15)", borderRadius: 3, cursor: "pointer" } as any}
+            >
+              {part}
+            </Text>
+          ) : (
+            <Text key={i}>{part}</Text>
+          )
+        )}
+      </Text>
+      {mentionUserId && (
+        <ProfileCard
+          userId={mentionUserId}
+          isOwnProfile={false}
+          onClose={() => setMentionUserId(null)}
+          onEditProfile={() => {
+            setMentionUserId(null);
+            setShowEditProfile(true);
+          }}
+        />
       )}
-    </Text>
+      {showEditProfile && (
+        <EditProfileModal onClose={() => setShowEditProfile(false)} />
+      )}
+    </>
   );
 }
 
