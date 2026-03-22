@@ -7,6 +7,7 @@ import { useChannelStore } from "@/stores/channel-store";
 import { Avatar } from "@/components/ui/Avatar";
 import { EditProfileModal } from "@/components/chat/EditProfileModal";
 import { VoiceChannelWidget } from "@/components/voice/VoiceChannel";
+import { useVoiceStore } from "@/stores/voice-store";
 import { ChannelSkeleton } from "@/components/ui/Skeleton";
 import { COLORS } from "@/lib/constants";
 import type { Channel } from "@/types/database";
@@ -61,8 +62,15 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
   const { profile } = useAuthStore();
   const { channels, isLoading, memberCount, fetchChannels, fetchPrivateAccess, fetchMemberCount, hasAccessToChannel } =
     useChannelStore();
+  const setShowVoiceRoom = useVoiceStore((s) => s.setShowVoiceRoom);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [showEditProfile, setShowEditProfile] = useState(false);
+
+  // When clicking a text channel, hide voice room overlay but keep voice connected
+  const handleChannelPress = useCallback((channel: Channel) => {
+    setShowVoiceRoom(false);
+    onChannelPress(channel);
+  }, [onChannelPress, setShowVoiceRoom]);
 
   useEffect(() => {
     fetchChannels();
@@ -233,7 +241,7 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
                     return (
                       <Pressable
                         key={ch.id}
-                        onPress={() => clickable && onChannelPress(ch)}
+                        onPress={() => clickable && handleChannelPress(ch)}
                         style={({ pressed, hovered }: any) => ({
                           flexDirection: "row",
                           alignItems: "center",
@@ -304,7 +312,7 @@ export function ChannelSidebar({ activeChannelId, onChannelPress, onSignOut }: C
                     .map((ch) => (
                       <Pressable
                         key={ch.id}
-                        onPress={() => onChannelPress(ch)}
+                        onPress={() => handleChannelPress(ch)}
                         style={{
                           flexDirection: "row",
                           alignItems: "center",

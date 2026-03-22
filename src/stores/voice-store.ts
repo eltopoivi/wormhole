@@ -26,6 +26,7 @@ interface VoiceState {
   isDeafened: boolean;
   isVideoOn: boolean;
   isScreenSharing: boolean;
+  showVoiceRoom: boolean;
 
   // Actions
   joinRoom: (roomId: string) => Promise<void>;
@@ -34,6 +35,7 @@ interface VoiceState {
   toggleDeafen: () => void;
   toggleVideo: () => Promise<void>;
   toggleScreenShare: () => Promise<void>;
+  setShowVoiceRoom: (show: boolean) => void;
 }
 
 // WebRTC config with free STUN servers
@@ -60,6 +62,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   isDeafened: false,
   isVideoOn: false,
   isScreenSharing: false,
+  showVoiceRoom: false,
+
+  setShowVoiceRoom: (show) => set({ showVoiceRoom: show }),
 
   joinRoom: async (roomId: string) => {
     if (Platform.OS !== "web") return;
@@ -189,6 +194,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
             isConnected: true,
             isConnecting: false,
             roomId,
+            showVoiceRoom: true,
           });
         }
       });
@@ -239,6 +245,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       isDeafened: false,
       isVideoOn: false,
       isScreenSharing: false,
+      showVoiceRoom: false,
     });
   },
 

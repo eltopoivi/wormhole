@@ -7,11 +7,12 @@ import { COLORS } from "@/lib/constants";
 const ROOM_ID = "energy-room";
 
 export function VoiceChannelWidget() {
-  const { isConnected, isConnecting, participants, joinRoom, leaveRoom } = useVoiceStore();
+  const { isConnected, isConnecting, participants, showVoiceRoom, joinRoom, setShowVoiceRoom } = useVoiceStore();
 
   const handlePress = () => {
     if (isConnected) {
-      // Already connected — don't disconnect on tap (use controls bar to leave)
+      // Toggle voice room view
+      setShowVoiceRoom(!showVoiceRoom);
       return;
     }
     joinRoom(ROOM_ID);

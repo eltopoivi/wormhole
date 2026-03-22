@@ -1,26 +1,22 @@
 import { useEffect, useRef } from "react";
-import { View, Text, Pressable, Platform } from "react-native";
+import { View, Text, Pressable, Platform, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useVoiceStore } from "@/stores/voice-store";
-import { Avatar } from "@/components/ui/Avatar";
 import { COLORS } from "@/lib/constants";
 
 /**
- * Full overlay for voice room when video or screen share is active.
- * Shows video feeds, screen shares, and participant grid.
+ * Voice room view. Shows when user clicks energy room or is in a voice call.
+ * Displays participant tiles (avatar or video), controls bar at bottom.
  */
 export function VoiceRoomOverlay() {
   const {
-    isConnected, participants, isVideoOn, isScreenSharing,
+    isConnected, participants, isVideoOn, isScreenSharing, showVoiceRoom,
     screenStream, localStream, remoteStreams,
     isMuted, isDeafened,
     toggleMute, toggleDeafen, toggleVideo, toggleScreenShare, leaveRoom,
   } = useVoiceStore();
 
-  // Only show overlay if video or screen share is active
-  if (!isConnected || (!isVideoOn && !isScreenSharing && !hasAnyVideo(participants))) {
-    return null;
-  }
+  if (!isConnected || !showVoiceRoom) return null;
 
   return (
     <View
@@ -34,41 +30,45 @@ export function VoiceRoomOverlay() {
         zIndex: 50,
       } as any}
     >
+      {/* Header */}
+      <View style={{ flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+        <Ionicons name="volume-high" size={20} color={COLORS.online} style={{ marginRight: 8 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: COLORS.textPrimary, fontSize: 16, fontWeight: "700" }}>energy room</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>
+            {participants.length} {participants.length === 1 ? "participant" : "participants"}
+          </Text>
+        </View>
+      </View>
+
       {/* Main content area */}
-      <View style={{ flex: 1, padding: 8 }}>
-        {/* Screen share takes priority */}
+      <View style={{ flex: 1, padding: 16 }}>
+        {/* Screen share takes full area */}
         {isScreenSharing && screenStream ? (
-          <View style={{ flex: 1, borderRadius: 8, overflow: "hidden", backgroundColor: "#000" }}>
+          <View style={{ flex: 1, borderRadius: 12, overflow: "hidden", backgroundColor: "#000" }}>
             <VideoElement stream={screenStream} muted />
           </View>
         ) : (
-          /* Participant grid */
-          <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center", alignItems: "center" }}>
-            {/* Local video */}
-            {isVideoOn && localStream && (
-              <ParticipantTile
-                username="You"
-                isMuted={isMuted}
-                isSpeaking={false}
-                stream={localStream}
-                mirrored
-              />
-            )}
-            {/* Remote videos */}
-            {participants
-              .filter((p) => p.isVideoOn)
-              .map((p) => {
-                const stream = remoteStreams.get(p.userId);
-                return stream ? (
-                  <ParticipantTile
-                    key={p.userId}
-                    username={p.username}
-                    isMuted={p.isMuted}
-                    isSpeaking={p.isSpeaking}
-                    stream={stream}
-                  />
-                ) : null;
-              })}
+          /* Participant grid — avatar tiles or video */
+          <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 12, justifyContent: "center", alignContent: "center" }}>
+            {participants.map((p, index) => {
+              const isLocal = index === 0; // First participant is usually self
+              const hasVideo = isLocal ? isVideoOn : p.isVideoOn;
+              const stream = isLocal ? localStream : remoteStreams.get(p.userId);
+
+              return (
+                <ParticipantTile
+                  key={p.userId}
+                  username={p.username}
+                  avatarUrl={p.avatarUrl}
+                  isMuted={isLocal ? isMuted : p.isMuted}
+                  isSpeaking={p.isSpeaking}
+                  hasVideo={hasVideo}
+                  stream={hasVideo && stream ? stream : undefined}
+                  mirrored={isLocal && hasVideo}
+                />
+              );
+            })}
           </View>
         )}
       </View>
@@ -132,49 +132,109 @@ export function VoiceRoomOverlay() {
   );
 }
 
+/** Participant tile — shows video if on, otherwise avatar */
 function ParticipantTile({
   username,
+  avatarUrl,
   isMuted,
   isSpeaking,
+  hasVideo,
   stream,
   mirrored,
 }: {
   username: string;
+  avatarUrl: string | null;
   isMuted: boolean;
   isSpeaking: boolean;
-  stream: MediaStream;
+  hasVideo: boolean;
+  stream?: MediaStream;
   mirrored?: boolean;
 }) {
   return (
     <View
       style={{
-        width: 320,
+        width: 240,
         height: 240,
-        borderRadius: 12,
+        borderRadius: 16,
         overflow: "hidden",
-        backgroundColor: "#000",
-        borderWidth: isSpeaking ? 2 : 0,
-        borderColor: COLORS.online,
+        backgroundColor: COLORS.bgElevated,
+        borderWidth: isSpeaking ? 3 : 1,
+        borderColor: isSpeaking ? COLORS.online : COLORS.border,
+        alignItems: "center",
+        justifyContent: "center",
         position: "relative",
       }}
     >
-      <VideoElement stream={stream} muted={mirrored} mirrored={mirrored} />
-      <View
-        style={{
-          position: "absolute",
-          bottom: 8,
-          left: 8,
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "rgba(0,0,0,0.6)",
-          borderRadius: 4,
-          paddingHorizontal: 6,
-          paddingVertical: 2,
-        }}
-      >
-        {isMuted && <Ionicons name="mic-off" size={12} color="#f47b67" style={{ marginRight: 4 }} />}
-        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>{username}</Text>
-      </View>
+      {hasVideo && stream ? (
+        <VideoElement stream={stream} muted={mirrored} mirrored={mirrored} />
+      ) : (
+        /* Avatar view */
+        <View style={{ alignItems: "center" }}>
+          <View
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              overflow: "hidden",
+              backgroundColor: COLORS.bgActive,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: isSpeaking ? 3 : 0,
+              borderColor: COLORS.online,
+            }}
+          >
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={{ width: 80, height: 80, borderRadius: 40 }} />
+            ) : (
+              <Text style={{ color: COLORS.textPrimary, fontSize: 32, fontWeight: "700" }}>
+                {username.charAt(0).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: "600", marginTop: 12 }}>
+            {username}
+          </Text>
+        </View>
+      )}
+
+      {/* Name + status overlay (for video mode) */}
+      {hasVideo && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 8,
+            left: 8,
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.6)",
+            borderRadius: 4,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+          }}
+        >
+          {isMuted && <Ionicons name="mic-off" size={12} color="#f47b67" style={{ marginRight: 4 }} />}
+          <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>{username}</Text>
+        </View>
+      )}
+
+      {/* Muted icon for avatar mode */}
+      {!hasVideo && isMuted && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 8,
+            right: 8,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: "rgba(0,0,0,0.6)",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Ionicons name="mic-off" size={14} color="#f47b67" />
+        </View>
+      )}
     </View>
   );
 }
@@ -208,17 +268,9 @@ function VideoElement({ stream, muted, mirrored }: { stream: MediaStream; muted?
 }
 
 function BigControlButton({
-  icon,
-  label,
-  active,
-  danger,
-  onPress,
+  icon, label, active, danger, onPress,
 }: {
-  icon: string;
-  label: string;
-  active: boolean;
-  danger?: boolean;
-  onPress: () => void;
+  icon: string; label: string; active: boolean; danger?: boolean; onPress: () => void;
 }) {
   return (
     <Pressable
@@ -234,25 +286,14 @@ function BigControlButton({
     >
       <View
         style={{
-          width: 44,
-          height: 44,
-          borderRadius: 22,
-          alignItems: "center",
-          justifyContent: "center",
+          width: 44, height: 44, borderRadius: 22,
+          alignItems: "center", justifyContent: "center",
           backgroundColor: danger ? "rgba(231,76,60,0.2)" : active ? COLORS.bgActive : COLORS.bgElevated,
         }}
       >
-        <Ionicons
-          name={icon as any}
-          size={20}
-          color={danger ? "#e74c3c" : active ? COLORS.textPrimary : COLORS.textMuted}
-        />
+        <Ionicons name={icon as any} size={20} color={danger ? "#e74c3c" : active ? COLORS.textPrimary : COLORS.textMuted} />
       </View>
       <Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 4 }}>{label}</Text>
     </Pressable>
   );
-}
-
-function hasAnyVideo(participants: { isVideoOn: boolean; isScreenSharing: boolean }[]) {
-  return participants.some((p) => p.isVideoOn || p.isScreenSharing);
 }
