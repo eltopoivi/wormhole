@@ -30,32 +30,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      // Listen for auth state changes
-      // INITIAL_SESSION fires after URL token processing (detectSessionInUrl) completes
-      supabase.auth.onAuthStateChange(async (event, session) => {
+      // Listen for future auth state changes (sign in, sign out, token refresh)
+      supabase.auth.onAuthStateChange(async (_event, session) => {
         set({ session, user: session?.user ?? null });
-
         if (session?.user) {
           await get().fetchProfile(session.user.id);
         } else {
           set({ profile: null });
         }
-
-        // Only mark initialized after the initial session check completes
-        // This ensures OAuth tokens from the URL have been processed
-        if (event === "INITIAL_SESSION") {
-          set({ isInitialized: true });
-        }
       });
 
-      // Safety timeout: if INITIAL_SESSION never fires, still unblock the app
-      setTimeout(() => {
-        if (!get().isInitialized) {
-          set({ isInitialized: true });
-        }
-      }, 5000);
+      // Check if there's already a session in storage
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        set({ session, user: session.user });
+        await get().fetchProfile(session.user.id);
+      }
     } catch (err) {
       console.error("[auth] initialize error:", err);
+    } finally {
       set({ isInitialized: true });
     }
   },

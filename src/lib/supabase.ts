@@ -30,7 +30,9 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: isWeb ? webStorage : AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: isWeb,
+    // Do NOT let Supabase auto-detect URL tokens — we handle it manually in /callback
+    // react-native-url-polyfill can interfere with Supabase's hash parsing
+    detectSessionInUrl: false,
     // Use implicit flow on web to avoid PKCE code verifier issues
     ...(isWeb ? { flowType: "implicit" as const } : {}),
   },
