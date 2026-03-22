@@ -41,16 +41,19 @@ export default function MainLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  // Mobile: standard stack navigation
+  // Mobile: standard stack navigation + voice overlay
   if (!showSidebar) {
     return (
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: COLORS.bgBase },
-          animation: "slide_from_right",
-        }}
-      />
+      <View style={{ flex: 1, position: "relative" } as any}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: COLORS.bgBase },
+            animation: "slide_from_right",
+          }}
+        />
+        <VoiceRoomOverlay />
+      </View>
     );
   }
 
