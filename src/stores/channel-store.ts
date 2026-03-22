@@ -5,17 +5,20 @@ import type { Channel } from "@/types/database";
 interface ChannelState {
   channels: Channel[];
   privateAccessIds: string[];
+  memberCount: number;
   isLoading: boolean;
   error: string | null;
 
   fetchChannels: () => Promise<void>;
   fetchPrivateAccess: () => Promise<void>;
+  fetchMemberCount: () => Promise<void>;
   hasAccessToChannel: (channel: Channel, userRole: string) => boolean;
 }
 
 export const useChannelStore = create<ChannelState>((set, get) => ({
   channels: [],
   privateAccessIds: [],
+  memberCount: 0,
   isLoading: false,
   error: null,
 
@@ -44,6 +47,15 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
 
     if (data) {
       set({ privateAccessIds: data.map((d: any) => d.channel_id) });
+    }
+  },
+
+  fetchMemberCount: async () => {
+    const { count, error } = await supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true });
+    if (!error && count !== null) {
+      set({ memberCount: count });
     }
   },
 
